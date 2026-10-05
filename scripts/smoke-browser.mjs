@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const base = process.env.WEBSITE_URL || (process.argv.includes('--built') ? 'http://127.0.0.1:8080' : 'http://127.0.0.1:5173');
+const factoryBase = (process.env.FACTORY_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const artifact = new URL('../.local/screenshots/', import.meta.url);
 await mkdir(artifact, { recursive: true });
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
@@ -67,7 +68,7 @@ try {
 
     async function customerForm(locale) {
       await page.goto(`${base}/${locale}/catalog`);
-      await expect(page.locator('.catalog-status')).toContainText({ pt: 'carregado do serviço local', en: 'loaded from the local service', es: 'cargado desde el servicio local' }[locale]);
+      await expect(page.locator('.catalog-status')).toContainText({ pt: 'carregado do serviço de teste', en: 'loaded from the demonstration service', es: 'cargado desde el servicio de prueba' }[locale]);
       await page.locator('.cart-button').click();
       await page.locator('.quote-summary > button').click();
       await page.locator('.customer-form input[autocomplete=name]').fill('Cliente de teste local');
@@ -122,10 +123,10 @@ try {
 
     await customerForm('en');
     await save(201);
-    await expect(page.getByTestId('local-quote-receipt')).toContainText('Inquiry saved in the local environment.');
+    await expect(page.getByTestId('local-quote-receipt')).toContainText('Inquiry saved in the demonstration environment.');
     await customerForm('es');
     await save(201);
-    await expect(page.getByTestId('local-quote-receipt')).toContainText('Solicitud guardada en el entorno local.');
+    await expect(page.getByTestId('local-quote-receipt')).toContainText('Solicitud guardada en el entorno de demostración.');
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.locator('dialog').evaluate(element => element.scrollWidth <= element.clientWidth), true, 'Receipt must fit mobile dialog');
     await page.getByTestId('local-quote-receipt').scrollIntoViewIfNeeded();
@@ -137,15 +138,15 @@ try {
     assert.equal(await page.locator('.product-card').count(), 5);
     await page.unroute('**/api/catalog');
     await page.reload();
-    await expect(page.locator('.catalog-status')).toContainText('carregado do serviço local');
+    await expect(page.locator('.catalog-status')).toContainText('carregado do serviço de teste');
     assert.deepEqual(errors, []);
-    console.log('Commerce browser smoke passed: real catalog, PT/EN/ES local receipts, idempotent retries including a lost response, changed input, private browser storage, mobile receipt and offline catalog fallback.');
+    console.log('Commerce browser smoke passed: real catalog, PT/EN/ES demonstration receipts, idempotent retries including a lost response, changed input, private browser storage, mobile receipt and offline catalog fallback.');
   }
   }
   if (process.argv.includes('--factory') || process.argv.includes('--factory-only')) {
-    const credentials = JSON.parse(await readFile(new URL('../../.local/admin-credentials.json', import.meta.url), 'utf8'));
+    const credentials = JSON.parse(await readFile(process.env.FACTORY_CREDENTIALS_FILE || new URL('../../.local/admin-credentials.json', import.meta.url), 'utf8'));
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto('http://127.0.0.1:8000/web/login');
+    await page.goto(`${factoryBase}/web/login`);
     await page.getByLabel('login-username').fill(credentials.username);
     await page.getByLabel('login-password').fill(credentials.password);
     const loginResponse = page.waitForResponse(response => response.url().includes('/api/auth/v1/auth/login') && response.request().method() === 'POST');
@@ -157,7 +158,22 @@ try {
       throw new Error(`Login returned ${result.status()}: ${headings.join(' | ')}`);
     }
     assert.equal((await result.json()).meta?.is_authenticated, true, 'Native login must authenticate the session');
-    await page.goto('http://127.0.0.1:8000/plugin/acrilchapas/');
+    // InvenTree still loads the authenticated profile and application state
+    // after the login response. Navigating immediately can cancel that flow.
+    await expect(page.getByLabel('login-username')).toHaveCount(0, { timeout: 60000 });
+    if (factoryBase.startsWith('https://')) {
+      const cookies = await page.context().cookies(factoryBase);
+      const sessionCookie = cookies.find(cookie => cookie.name === 'sessionid');
+      assert.ok(sessionCookie?.secure && sessionCookie.httpOnly, 'Factory session must be Secure and HttpOnly on HTTPS');
+    }
+    if (process.env.FACTORY_MEDIA_TEST_PATH) {
+      const mediaUrl = `${factoryBase}/media/${process.env.FACTORY_MEDIA_TEST_PATH}`;
+      assert.equal((await page.request.get(mediaUrl)).status(), 200, 'Authenticated media must be readable');
+      const anonymous = await browser.newContext();
+      try { assert.equal((await anonymous.request.get(mediaUrl)).status(), 401, 'Media must reject anonymous access'); }
+      finally { await anonymous.close(); }
+    }
+    await page.goto(`${factoryBase}/plugin/acrilchapas/`);
     await page.locator('h1').waitFor();
     await page.screenshot({ path: fileURLToPath(new URL('factory-desktop.png', artifact)), fullPage: true });
     await page.getByRole('link', { name: 'DEMO-CAST-001', exact: true }).click();
@@ -165,7 +181,7 @@ try {
     await page.locator('button[type=submit]').first().click();
     assert.match(await page.locator('[role=status]').innerText(), /demonstrativos/);
     console.log('Factory browser smoke passed: login, production dashboard, batch page, demo start blocked.');
-    await page.goto('http://127.0.0.1:8000/web/');
+    await page.goto(`${factoryBase}/web/`);
     await page.waitForLoadState('networkidle');
     assert.equal(await page.getByLabel('login-username').count(), 0, 'Native interface must keep the authenticated session');
     const factoryLink = page.getByRole('link', { name: 'Abrir fábrica Acrilchapas →' });
@@ -179,13 +195,13 @@ try {
       const child = link.getBoundingClientRect();
       return parent.width >= 300 && child.right <= parent.right && child.bottom <= parent.bottom;
     })).toBe(true);
-    const profile = await page.request.get('http://127.0.0.1:8000/api/user/me/');
+    const profile = await page.request.get(`${factoryBase}/api/user/me/`);
     assert.ok((await profile.json()).profile.widgets.widgets.includes('p-acrilchapas-factory'), 'Factory widget persists in the native user profile');
     await page.screenshot({ path: fileURLToPath(new URL('inventree-desktop.png', artifact)), fullPage: true });
     await factoryLink.click();
     await page.waitForURL('**/plugin/acrilchapas/');
     await page.getByRole('link', { name: 'DEMO-CAST-001', exact: true }).waitFor();
-    await page.goto('http://127.0.0.1:8000/web/');
+    await page.goto(`${factoryBase}/web/`);
     await factoryLink.waitFor();
     await page.getByLabel('open-spotlight', { exact: true }).click();
     await page.getByPlaceholder('Buscar...').fill('Fábrica Acrilchapas');

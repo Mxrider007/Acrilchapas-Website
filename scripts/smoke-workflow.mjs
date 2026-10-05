@@ -2,8 +2,8 @@ import {chromium,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-const base=process.env.ACRILCHAPAS_WEB_URL||(process.argv.includes('--built')?'http://127.0.0.1:8080':'http://127.0.0.1:5173');
-const credentials=JSON.parse(await readFile(new URL('../../.local/commerce.admin.json',import.meta.url),'utf8'));
+const base=process.env.ACRILCHAPAS_WEB_URL||process.env.WEBSITE_URL||(process.argv.includes('--built')?'http://127.0.0.1:8080':'http://127.0.0.1:5173');
+const credentials=JSON.parse(await readFile(process.env.COMMERCE_CREDENTIALS_FILE||new URL('../../.local/commerce.admin.json',import.meta.url),'utf8'));
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const staff=await browser.newPage({viewport:{width:1440,height:1000}});
 const customer=await browser.newPage({viewport:{width:1280,height:900}});
@@ -16,6 +16,10 @@ try{
  await staff.getByRole('button',{name:'Entrar',exact:true}).click();
  await expect(staff.getByRole('heading',{name:'Orçamentos',exact:true})).toBeVisible();
  const session=await (await staff.request.get(base+'/api/staff/session')).json();
+ if(base.startsWith('https://')){
+  const cookie=(await staff.context().cookies(base+'/api/staff/session')).find(item=>item.name==='acrilchapas_staff');
+  assert.ok(cookie?.secure&&cookie.httpOnly,'Sales session must be Secure and HttpOnly on HTTPS');
+ }
  const headers={'X-CSRF-Token':session.csrfToken};
  const suffix=crypto.randomUUID().slice(0,8).toUpperCase();const sku='DEMO-E2E-'+suffix;
  let response=await staff.request.post(base+'/api/staff/variants',{headers,data:{sku,productId:'sample-crystal',widthMm:1000,heightMm:500,thicknessMm:3,active:true}});
