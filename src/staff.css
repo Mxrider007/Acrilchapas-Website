@@ -3,3 +3,5 @@
 .work-fields{border:0;padding:0;margin:0;min-width:0}.workspace fieldset:disabled input,.workspace fieldset:disabled textarea{background:#f6f7f4;color:#5b6b61}
 
 .workspace h2,.workspace h3{font-family:inherit;letter-spacing:-.2px;line-height:1.3;font-weight:600}.workspace h1{font-family:inherit;line-height:1.15}.workspace p{overflow-wrap:anywhere}.work-nav small{overflow-wrap:anywhere}
+
+.work-brand img{display:block;width:190px;max-width:46vw;height:auto}

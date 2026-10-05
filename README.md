@@ -4,14 +4,14 @@
 
 Frontend repository: [Acrilchapas-Website](https://github.com/Mxrider420z/Acrilchapas-Website). The factory backend, commerce API, provider integrations and operating documentation live separately in [Acrilchapas-System](https://github.com/Mxrider420z/Acrilchapas-System). Neither repository contains runtime credentials or databases.
 
-Responsive Portuguese, English and Spanish website with catalog, exports, dimension/area entry, quote basket, draft downloads, explicit local inquiries and a private customer portal. `/staff` provides authenticated sales review, offers, orders, demonstration stock and shipment. Orders and payment simulation work locally; no real payment, marketplace listing or automatic message is sent.
+Responsive Portuguese, English and Spanish website with five-family photo catalog, effect finder, interactive application guidance, factory story, FAQs, exports, dimension/area entry, quote basket, draft downloads, explicit local inquiries and a private customer portal. `/staff` provides authenticated sales review, offers, orders, demonstration stock and shipment. Orders and payment simulation work on the demonstration server; no real payment, marketplace listing or automatic message is sent.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:5173/pt. Equivalent routes: `/en`, `/es`, and `/{locale}/catalog`. The local draft is not a submitted request; catalog dimensions, colors, stock and prices need factory validation. Brand artwork is a proposed direction made with code-native SVG/CSS, not a claim to be the approved company logo or physical product photography.
+Development reference only; do not start local servers in the current VPS workflow. Equivalent public routes: `/en`, `/es`, and `/{locale}/catalog`. The local draft is not a submitted request; catalog dimensions, colors, stock and prices need factory validation. The website uses the official Acrilchapas logo, favicon, five family images and factory photographs, reused with the user’s authorization. See [visual sources and benchmark decisions](docs/visual-sources.md). The official hero is delivered as a responsive WebP (about 36 KB / 103 KB); the source PNGs are retained for provenance.
 
 To load the persistent demonstration catalog and save local inquiries, run `npm run dev:commerce` from the system project in a separate terminal. Vite development and preview proxy `/api` to `http://127.0.0.1:8001`. If that service is unavailable, the website labels its bundled examples and still supports draft download. Static build hosting must supply its own same-origin `/api` proxy; no service credentials belong in browser environment variables.
 
@@ -23,10 +23,11 @@ npm run build
 npm run test:browser
 npm run test:browser -- --commerce
 npm run test:workflow
+WEBSITE_URL=https://172.235.144.185 npm run test:redesign
 npm run test:workflow -- --built
 ```
 
-Browser tests require Playwright Chromium. Tests cover language switching, filtering, numeric entry, quote download, storage persistence, mobile menu and horizontal overflow. `--commerce` requires the real local service and adds catalog loading, Portuguese/English/Spanish receipts, retry idempotency including a lost response after storage, changed-input submissions, private browser storage, mobile layout and offline fallback. It creates clearly named demonstration inquiries with an `example.test` email address. `npm run test:browser -- --factory` additionally checks the sibling local InvenTree application using the ignored system `.local/admin-credentials.json`. This optional factory test assumes the current staging layout; update its credentials-file path after moving the project, or run only the website tests.
+Browser tests require Playwright Chromium. Run them on the VPS, sequentially to fit its memory budget, with at least 25 seconds between suites to let the shared per-IP request limiter recover. The redesign suite verifies official image loading, localized discovery, keyboard/focus behavior, FAQs, material finder and overflow at 320/360/390/768/880/1440 pixels; screenshots stay in ignored `.local/screenshots/redesign/`. Tests cover language switching, filtering, numeric entry, quote download, storage persistence, mobile menu and horizontal overflow. `--commerce` requires the real local service and adds catalog loading, Portuguese/English/Spanish receipts, retry idempotency including a lost response after storage, changed-input submissions, private browser storage, mobile layout and offline fallback. It creates clearly named demonstration inquiries with an `example.test` email address. `npm run test:browser -- --factory` additionally checks the sibling local InvenTree application using the ignored system `.local/admin-credentials.json`. This optional factory test assumes the current staging layout; update its credentials-file path after moving the project, or run only the website tests.
 
 There are no provider secrets in this package. The backend stages restricted factory exports for review and implements test-account Mercado Pago/Mercado Livre adapters. Staff integration actions require administrator session/CSRF and an explicit configured test account. Live operation is disabled. Factory browser tokens never enter the public website. Customer capability tokens stay in private URL fragments and scoped Authorization headers.
 
@@ -40,4 +41,4 @@ For an HTTPS demonstration, serve the built website and `/api` on the same origi
 
 Browser checks can target an existing VPS deployment without starting a local server. Set `WEBSITE_URL` for both browser scripts (`ACRILCHAPAS_WEB_URL` remains an alternative for the workflow script), `FACTORY_URL` to the factory origin, and `COMMERCE_CREDENTIALS_FILE` / `FACTORY_CREDENTIALS_FILE` to protected JSON files containing the generated credentials for that deployment. Their defaults retain the local staging layout. Keep those files outside source control, use fresh demonstration records on the VPS, and keep normal certificate verification enabled. The authenticated workflow creates explicitly synthetic inventory, inquiries, orders and shipments; it performs no real payment or shipment.
 
-Before a public launch: approved product/media/contact content, server-rendered product SEO and hreflang/sitemap, a production quotation workflow and retention policy, legal pages, shipping/tax behavior, provider sandbox tests, and production deployment configuration. The HTML is currently `noindex,nofollow`; the privacy notice distinguishes browser storage from explicit transmission to the demonstration server.
+Before a public launch: approved commercial specifications/prices and legal content, server-rendered product SEO and hreflang/sitemap, a production quotation workflow and retention policy, legal pages, shipping/tax behavior, provider sandbox tests, and production deployment configuration. The HTML is currently `noindex,nofollow`; the privacy notice distinguishes browser storage from explicit transmission to the demonstration server.
