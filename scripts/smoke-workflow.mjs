@@ -14,6 +14,7 @@ try{
  await staff.getByLabel('Usuário',{exact:true}).fill(credentials.username);
  await staff.getByLabel('Senha',{exact:true}).fill(credentials.password);
  await staff.getByRole('button',{name:'Entrar',exact:true}).click();
+ await staff.getByRole('button',{name:'Orçamentos',exact:true}).click();
  await expect(staff.getByRole('heading',{name:'Orçamentos',exact:true})).toBeVisible();
  const session=await (await staff.request.get(base+'/api/staff/session')).json();
  if(base.startsWith('https://')){

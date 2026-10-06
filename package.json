@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 5173",
     "test": "node scripts/test-domain.mjs",
     "test:browser": "node scripts/smoke-browser.mjs",
+    "test:owner-demo": "node scripts/smoke-owner-demo.mjs",
     "test:redesign": "node scripts/smoke-redesign.mjs",
     "test:workflow": "node scripts/smoke-workflow.mjs"
   },
